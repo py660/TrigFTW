@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trig Identity Quiz</title>
+    <style>
+        body{
+            font-family:Arial,Helvetica,sans-serif;
+            background:#f5f5f5;
+            margin:0; padding:20px;
+            display:flex; justify-content:center; align-items:center;
+            min-height:100vh;
+        }
+        #quiz-container{
+            background:white;
+            border-radius:8px;
+            padding:25px 30px;
+            box-shadow:0 2px 6px rgba(0,0,0,.15);
+            max-width:600px; width:100%;
+        }
+        h1{margin-top:0;text-align:center;}
+        .question{
+            font-size:1.4em;margin-bottom:12px;
+        }
+        input[type=text]{
+            width:100%; padding:10px;
+            font-size:1em;border:1px solid #ccc;border-radius:4px;
+            box-sizing:border-box; margin-top:5px;
+        }
+        #preview{
+            padding:10px;
+        }
+        button{
+            margin-top:10px;padding:10px 20px;font-size:1em;
+            background:#28a745;color:white;border:none;border-radius:4px;
+            cursor:pointer;
+        }
+        button:hover{background:#218838;}
+        button#next-btn{background:#007bff;}
+        button#next-btn:hover{background:#0069d9;}
+        .feedback{
+            font-weight:bold;margin-top:12px;font-size:1.1em;
+        }
+        #score-screen{text-align:center;}
+        #score-screen p{font-size:1.2em;margin:0 0 15px;}
+    </style>
+</head>
+<body>
+
+<div id="quiz-container">
+    <h1>Trig Identity Quiz</h1>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <p>Test your memory of advanced trigonometric identities. Gamification to come later.</p>
+        <button id="start-btn">Start Quiz</button>
+    </div>
+
+    <!-- Question Screen -->
+    <div id="question-screen" style="display:none;">
+        <div class="question" id="question-text"></div>
+        <input type="text" id="answer-input" autocomplete="off"/>
+        <div id="preview"></div>
+        <div class="feedback" id="feedback"></div>
+        <button id="submit-btn">Submit</button>
+    </div>
+
+    <!-- Score Screen -->
+    <div id="score-screen" style="display:none;">
+        <p>Your score: <span id="final-score"></span> / <span id="total-questions"></span></p>
+        <button id="restart-btn">Play Again</button>
+    </div>
+</div>
+
+<script>
+MathJax = {
+  tex: {
+    inlineMath: {'[+]': [['$', '$']]}
+  }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.9.1/math.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+/* ------- Identity Data -------- */
+const identities = [
+    // Sum & Difference
+    {left:["sin(A+B)"], right:["sin(A)cos(B)+cos(A)sin(B)"]},
+    {left:["sin(A-B)"], right:["sin(A)cos(B)-cos(A)sin(B)"]},
+    {left:["cos(A+B)"], right:["cos(A)cos(B)-sin(A)sin(B)"]},
+    {left:["cos(A-B)"], right:["cos(A)cos(B)+sin(A)sin(B)"]},
+    {left:["tan(A+B)"], right:["(tan(A)+tan(B))/(1-tan(A)tan(B))"]},
+    {left:["tan(A-B)"], right:["(tan(A)-tan(B))/(1+tan(A)tan(B))"]},
+
+    // Double Angle
+    {left:["sin(2A)"], right:["2sin(A)cos(A)"]},
+    {left:["cos(2A)"], right:["cos(A)^2-sin(A)^2", "1-2sin(A)^2", "2cos(A)^2-1"]},
+    {left:["tan(2A)"], right:["(2tan(A))/(1-tan(A)^2)"]},
+
+    // Half Angle
+    {left:["sin(A/2)"], right:["sqrt((1-cos(A))/2)"]},
+    {left:["cos(A/2)"], right:["sqrt((1+cos(A))/2)"]},
+    {left:["tan(A/2)"], right:["sqrt((1-cos(A))/(1+cos(A)))", "sin(A)/(1+cos(A))", "(1-cos(A))/sin(A)"]},
+
+    // Product‑to‑Sum
+    {left:["sin(A)sin(B)"], right:["(cos(A-B)-cos(A+B))/2"]},
+    {left:["cos(A)cos(B)"], right:["(cos(A-B)+cos(A+B))/2"]},
+    {left:["sin(A)cos(B)"], right:["(sin(A+B)+sin(A-B))/2"]}
+];
+
+function shuffleArray(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+}
+
+function isSymbolicallyEqual(aStr,bStr){
+    try{
+        const a = math.parse(aStr);
+        const b = math.parse(bStr);
+        return math.symbolicEqual(a, b);
+    }catch(e){
+        return false;
+    }
+}
+
+function generateQuiz(num){
+    const shuffled = shuffleArray(identities);
+    const chosen = shuffled.slice(0, Math.min(num, identities.length));
+    return chosen.map(id=>{
+        const forward = Math.random()<0.5;
+        if(forward)
+            return {questionTex:`${math.parse(id.left[id.left.length * Math.random() | 0]).toTex({parenthesis: 'auto'})} = \\fbox{?}`, answers:id.right};
+        else
+            return {questionTex:`\\fbox{?} = ${math.parse(id.right[id.right.length * Math.random() | 0]).toTex({parenthesis: 'auto'})}`, answers:id.left};
+    });
+}
+
+let quizArray=[], currentIdx=0, score=0, totalQ=0;
+
+const startBtn=document.getElementById('start-btn');
+const submitBtn=document.getElementById('submit-btn');
+const answerInput=document.getElementById('answer-input');
+const feedbackEl=document.getElementById('feedback');
+const questionTextEl=document.getElementById('question-text');
+const startScreen=document.getElementById('start-screen');
+const questionScreen=document.getElementById('question-screen');
+const scoreScreen=document.getElementById('score-screen');
+const finalScoreEl=document.getElementById('final-score');
+const totalQEl=document.getElementById('total-questions');
+const restartBtn=document.getElementById('restart-btn');
+const previewEl=document.getElementById('preview');
+const inputEl=document.getElementById('answer-input');
+
+startBtn.addEventListener('click', startQuiz);
+submitBtn.addEventListener('click', handleSubmit);
+inputEl.addEventListener('input', handleInputUpdate);
+restartBtn.addEventListener('click', () => location.reload());
+
+function startQuiz(){
+    quizArray = generateQuiz(12);// #of questions
+    currentIdx=0; score=0;
+    totalQ=quizArray.length;
+    startScreen.style.display='none';
+    questionScreen.style.display='block';
+    showQuestion();
+}
+
+function showQuestion(){
+    const q = quizArray[currentIdx];
+    questionTextEl.textContent=`Q${currentIdx+1}/${totalQ}: $${q.questionTex}$`;
+    answerInput.value='';
+    feedbackEl.textContent='';
+    refreshPreview(); // includes typesetPromise
+    answerInput.disabled=false;
+    submitBtn.style.display='inline-block';
+    const oldNext=document.getElementById('next-btn');
+    if(oldNext) oldNext.remove();
+}
+
+/* ty stackoverflow - https://stackoverflow.com/questions/64720811/how-to-auto-close-brackets-and-braces-in-javascript
+   ty stackoverflow - https://stackoverflow.com/questions/74245204/how-to-autocomplete-brackets-in-html-textarea */
+const closeChars = new Map([
+    ['{', '}'],
+    ['[', ']'],
+    ['(', ')']
+]);
+
+function handleInputUpdate(e){
+    // autoclose parenthesis
+    if (e.data?.length === 1 && e.data === "(") {
+        const start = inputEl.selectionStart;
+        const end = inputEl.selectionEnd;
+        inputEl.value = inputEl.value.slice(0, start) + ")" + inputEl.value.slice(start);
+        inputEl.selectionStart = start;
+        inputEl.selectionEnd = end;
+    }
+    refreshPreview();
+}
+
+function refreshPreview(){
+    try {
+        if (["sin^2", "cos^2", "tan^2", "csc^2", "sec^2", "cot^2"].some((e)=>inputEl.value.includes(e))){
+            feedbackEl.textContent="Notate using sin(x)^2 instead of sin^2(x)";
+            feedbackEl.style.color="red";
+        } else if (/(sin|cos|tan|csc|sec|cot)[^\(]/.test(inputEl.value)){
+            feedbackEl.textContent="Parenthesize trigonometric arguments";
+            feedbackEl.style.color="red";
+        } else {
+            feedbackEl.innerHTML="";
+        }
+        previewEl.textContent = math.parse(inputEl.value).toTex({parenthesis: 'auto'}) !== "undefined"
+                                ? `$${math.parse(inputEl.value).toTex({parenthesis: 'auto'})}$`
+                                : "";
+        previewEl.style.color='';
+        MathJax.typesetPromise();
+    } catch(e) {
+        previewEl.style.color='red';
+    }
+}
+
+function handleSubmit(){
+    const userAns=answerInput.value.trim();
+    if(!userAns){ feedbackEl.textContent="Please enter an answer."; return; }
+    const correctAnsArray=quizArray[currentIdx].answers;
+    if(correctAnsArray.some((e)=>isSymbolicallyEqual(userAns,e))){
+        score++; feedbackEl.textContent='Correct!'; feedbackEl.style.color='green';
+    }else{
+        feedbackEl.innerHTML=`Incorrect. <br>The correct answer was: $${correctAnsArray.map((e)=>math.parse(e).toTex({parenthesis: 'auto'})).join("$ or $")}$`;
+        MathJax.typesetPromise();
+        feedbackEl.style.color='red';
+    }
+    answerInput.disabled=true;
+    submitBtn.style.display='none';
+
+    // Show Next button
+    const nextBtn=document.createElement('button');
+    nextBtn.id='next-btn'; nextBtn.textContent='Next Question';
+    nextBtn.addEventListener('click', handleNext);
+    questionScreen.appendChild(nextBtn);
+}
+
+function handleNext(){
+    currentIdx++;
+    if(currentIdx < totalQ){
+        showQuestion();
+    }else{
+        // Show final score
+        questionScreen.style.display='none';
+        scoreScreen.style.display='block';
+        finalScoreEl.textContent=score;
+        totalQEl.textContent=totalQ;
+    }
+}
+</script>
+</body>
+</html>
