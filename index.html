@@ -225,7 +225,7 @@ function refreshPreview(){
 
 function handleSubmit(){
     const userAns=answerInput.value.trim();
-    if(!userAns){ feedbackEl.textContent="Please enter an answer."; return; }
+    if(!userAns){ feedbackE.style.color='red'; feedbackEl.textContent="Please enter an answer."; return; }
     const correctAnsArray=quizArray[currentIdx].answers;
     if(correctAnsArray.some((e)=>isSymbolicallyEqual(userAns,e))){
         score++; feedbackEl.textContent='Correct!'; feedbackEl.style.color='green';
